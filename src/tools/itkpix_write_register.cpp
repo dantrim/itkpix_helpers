@@ -81,7 +81,6 @@ int main(int argc, char* argv[]) {
 
     hw->setCmdEnable(cfg->getTxChannel());
     hw->setTrigEnable(0);
-    std::cout << "Writing register \"" << register_name << "\": " << register_value << std::endl;
     fe->writeNamedRegister(register_name, register_value);
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
 

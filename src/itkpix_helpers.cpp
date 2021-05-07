@@ -4,7 +4,8 @@
 //#include "Logger.h"
 
 // json
-// using json = nlohmann::json; // this is picked up from YARR, which does it at
+//#include "json.hpp"
+//using json = nlohmann::json; // this is picked up from YARR, which does it at
 // global scope!!
 
 // yarr
@@ -48,14 +49,14 @@ std::unique_ptr<SpecController> itkpix::helpers::spec_init(std::string config) {
 
 bool itkpix::helpers::spec_init_trigger(std::unique_ptr<SpecController>& hw,
                                        json trigger_config) {
-    uint32_t m_trigDelay = trigger_config.at("delay");
-    float m_trigTime = trigger_config.at("time");
-    float m_trigFreq = trigger_config.at("frequency");
+    uint32_t m_trigDelay = trigger_config["delay"];
+    float m_trigTime = trigger_config["time"];
+    float m_trigFreq = trigger_config["frequency"];
     uint32_t m_trigWordLength = 32;
-    bool m_noInject = trigger_config.at("noInject");
-    bool m_edgeMode = trigger_config.at("edgeMode");
-    bool m_extTrig = trigger_config.at("extTrigger");
-    uint32_t m_edgeDuration = trigger_config.at("edgeDuration");
+    bool m_noInject = trigger_config["noInject"];
+    bool m_edgeMode = trigger_config["edgeMode"];
+    bool m_extTrig = trigger_config["extTrigger"];
+    uint32_t m_edgeDuration = trigger_config["edgeDuration"];
     uint32_t m_pulseDuration = 8;
     uint32_t m_trigMultiplier = 16;
     std::array<uint32_t, 32> m_trigWord;
@@ -104,7 +105,7 @@ bool itkpix::helpers::spec_init_trigger(std::unique_ptr<SpecController>& hw,
     // SET TRIGGER MODE
     ////////////////////////////////////////////////////////////////
     hw->setTrigConfig(INT_COUNT);
-    hw->setTrigCnt(trigger_config.at("count"));
+    hw->setTrigCnt(trigger_config["count"]);
 
     ////////////////////////////////////////////////////////////////
     // REMAINING
@@ -153,7 +154,7 @@ std::unique_ptr<Rd53b> itkpix::helpers::rd53b_init(
             return nullptr;
         }
         // auto chip_config = json_config["chips"]["config"];
-        auto chip_config = chip_configs.at(chip_num);
+        auto chip_config = chip_configs[chip_num];
         fe->init(&*hw, chip_config["tx"], chip_config["rx"]);
         auto chip_register_file_path = chip_config["config"];
         auto chip_register_json =
@@ -167,8 +168,8 @@ std::unique_ptr<Rd53b> itkpix::helpers::rd53b_init(
         new_cfg_file.close();
     }
 
-    std::cout << "Initialized RD53b with TX/RX = " << cfg->getTxChannel()
-                    << "/" << cfg->getRxChannel() << std::endl;
+//    std::cout << "Initialized RD53b with TX/RX = " << cfg->getTxChannel()
+//                    << "/" << cfg->getRxChannel() << std::endl;
 
     return fe;
 }
@@ -389,8 +390,10 @@ bool itkpix::helpers::clear_tot_memories(std::unique_ptr<SpecController>& hw,
     /////////////////////////////////
     json pre_scan_cfg = {{"InjDigEn", 1}, {"Latency", 500}};
     hw->setCmdEnable(cfg->getTxChannel());
-    for (auto j : pre_scan_cfg.items()) {
-        fe->writeNamedRegister(j.key(), j.value());
+    //for (auto  : pre_scan_cfg) {
+    for(json::iterator it = pre_scan_cfg.begin(); it != pre_scan_cfg.end(); ++it) {
+    //for (auto j : pre_scan_cfg) {
+        fe->writeNamedRegister(it.key(), it.value());
     }
     while (!hw->isCmdEmpty()) {
     }

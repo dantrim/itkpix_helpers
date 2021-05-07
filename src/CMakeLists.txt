@@ -23,7 +23,7 @@ foreach(lib ${YARRLIBS})
         ${PROJECT_SOURCE_DIR}/YARR/src/lib${lib}/*.cpp)
     list(APPEND YARRSRCFILES ${srcfiles})
 endforeach()
-target_include_directories(itkpix_helpers PRIVATE ${VARIANTINCLUDE})
+target_include_directories(itkpix_helpers PUBLIC ${VARIANTINCLUDE})
 
 set(YARR_LINK_COMMAND Yarr Util Spec Rd53b pthread)
 target_link_libraries(itkpix_helpers ${YARR_LINK_COMMAND})

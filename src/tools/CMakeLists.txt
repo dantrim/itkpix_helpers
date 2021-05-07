@@ -10,7 +10,6 @@ file(GLOB execfiles [a-zA-Z]*.cpp)
 #endforeach()
 
 
-message("FOO PROJECT SOURCE DIR = ${PROJECT_SOURCE_DIR}")
 foreach(target ${execfiles})
     get_filename_component(execname ${target} NAME_WE)
     get_filename_component(srcfile ${target} NAME)
