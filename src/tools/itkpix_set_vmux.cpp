@@ -15,19 +15,17 @@ namespace fs = std::experimental::filesystem;
 struct option longopts_t[] = {{"hw", required_argument, NULL, 'r'},
                                 {"chip", required_argument, NULL, 'c'},
                                 {"number", required_argument, NULL, 'i'},
-                                {"name", required_argument, NULL, 'n'},
-                                {"val", required_argument, NULL, 'v'},
+                                {"vmux", required_argument, NULL, 'v'},
                                 {0,0,0,0}};
 
 int main(int argc, char* argv[]) {
 
     std::string chip_config_filename = "";
     std::string hw_config_filename = "";
-    std::string register_name = "";
-    uint32_t chip_number = 0;
-    uint32_t register_value = 0;
+    uint32_t chip_id = 0;
+    uint32_t vmux_value = 0;
     int c = 0;
-    while ((c = getopt_long(argc, argv, "r:c:i:n:v:", longopts_t, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:c:i:v:", longopts_t, NULL)) != -1) {
         switch(c) {
             case 'r' :
                 hw_config_filename = optarg;
@@ -36,13 +34,10 @@ int main(int argc, char* argv[]) {
                 chip_config_filename = optarg;
                 break;
             case 'i' :
-                chip_number = static_cast<uint32_t>(std::stoi(optarg));
-                break;
-            case 'n' :
-                register_name = optarg;
+                chip_id = static_cast<uint32_t>(std::stoi(optarg));
                 break;
             case 'v' :
-                register_value = static_cast<uint32_t>(std::stoi(optarg));
+                vmux_value = static_cast<uint32_t>(std::stoi(optarg));
                 break;
             case '?' :
             default :
@@ -66,22 +61,28 @@ int main(int argc, char* argv[]) {
 
     namespace pix = itkpix::helpers;
     auto hw = pix::spec_init(hw_config_filename);
-    auto fe = pix::rd53b_init(hw, chip_config_filename, chip_number);
-    auto cfg = dynamic_cast<Rd53bCfg*>(fe.get());
 
     if(!hw) {
         std::cout << "ERROR: Initialized hw controller is nullptr" << std::endl;
         return 1;
     }
 
-    if(!fe) {
-        std::cout << "ERROR: Initialized fe chip is nullptr" << std::endl;
-        return 1;
+    for(size_t i = 0; i < 4; i++) {
+        auto fe = pix::rd53b_init(hw, chip_config_filename, i);
+        if(!fe) {
+            std::cout << "ERROR: Initialized fe chip " << i << " is nullptr" << std::endl;
+            return 1;
+        }
+        auto cfg = dynamic_cast<Rd53bCfg*>(fe.get());
+        hw->setCmdEnable(cfg->getTxChannel());
+        hw->setTrigEnable(0);
+        if(i != chip_id) {
+            fe->writeNamedRegister("MonitorV", 63);
+            fe->writeNamedRegister("MonitorI", 63);
+        } else {
+            fe->writeNamedRegister("MonitorV", vmux_value);
+        }
+        fe->configureGlobal();
     }
-
-    hw->setCmdEnable(cfg->getTxChannel());
-    hw->setTrigEnable(0);
-    fe->writeNamedRegister(register_name, register_value);
-
     return 0;
 }
