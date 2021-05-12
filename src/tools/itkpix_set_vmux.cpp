@@ -13,31 +13,36 @@ namespace fs = std::experimental::filesystem;
 #include "itkpix_helpers.h"
 
 struct option longopts_t[] = {{"hw", required_argument, NULL, 'r'},
-                                {"chip", required_argument, NULL, 'c'},
-                                {"number", required_argument, NULL, 'i'},
-                                {"vmux", required_argument, NULL, 'v'},
+                                {"connectivity", required_argument, NULL, 'c'},
+                                {"chip-id", required_argument, NULL, 'i'},
+                                {"do-imux", no_argument, NULL, 'a'},
+                                {"val", required_argument, NULL, 'v'},
                                 {0,0,0,0}};
 
 int main(int argc, char* argv[]) {
 
-    std::string chip_config_filename = "";
+    std::string connectivity_config_filename = "";
     std::string hw_config_filename = "";
     uint32_t chip_id = 0;
-    uint32_t vmux_value = 0;
+    uint32_t value = 0;
+    bool do_imux = false;
     int c = 0;
-    while ((c = getopt_long(argc, argv, "r:c:i:v:", longopts_t, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "r:c:i:v:a", longopts_t, NULL)) != -1) {
         switch(c) {
             case 'r' :
                 hw_config_filename = optarg;
                 break;
             case 'c' :
-                chip_config_filename = optarg;
+                connectivity_config_filename = optarg;
                 break;
             case 'i' :
                 chip_id = static_cast<uint32_t>(std::stoi(optarg));
                 break;
             case 'v' :
-                vmux_value = static_cast<uint32_t>(std::stoi(optarg));
+                value = static_cast<uint32_t>(std::stoi(optarg));
+                break;
+            case 'a' :
+                do_imux = true;
                 break;
             case '?' :
             default :
@@ -53,9 +58,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    fs::path chip_config_path(chip_config_filename);
+    fs::path chip_config_path(connectivity_config_filename);
     if(!fs::exists(chip_config_path)) {
-        std::cout << "ERROR: Provided chip config file (=" << chip_config_filename << ") does not exist" << std::endl;
+        std::cout << "ERROR: Provided chip config file (=" << connectivity_config_filename << ") does not exist" << std::endl;
         return 1;
     }
 
@@ -68,7 +73,7 @@ int main(int argc, char* argv[]) {
     }
 
     for(size_t i = 0; i < 4; i++) {
-        auto fe = pix::rd53b_init(hw, chip_config_filename, i);
+        auto fe = pix::rd53b_init(hw, connectivity_config_filename, i);
         if(!fe) {
             std::cout << "ERROR: Initialized fe chip " << i << " is nullptr" << std::endl;
             return 1;
@@ -80,9 +85,14 @@ int main(int argc, char* argv[]) {
             fe->writeNamedRegister("MonitorV", 63);
             fe->writeNamedRegister("MonitorI", 63);
         } else {
-            fe->writeNamedRegister("MonitorV", vmux_value);
+            if(do_imux) {
+                fe->writeNamedRegister("MonitorV", 1);
+                fe->writeNamedRegister("MonitorI", value);
+            } else {
+                fe->writeNamedRegister("MonitorV", value);
+                fe->writeNamedRegister("MonitorI", 63);
+            }
         }
-        fe->configureGlobal();
     }
     return 0;
 }
