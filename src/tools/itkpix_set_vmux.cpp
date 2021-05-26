@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     std::string connectivity_config_filename = "";
     std::string hw_config_filename = "";
-    uint32_t chip_id = 0;
+    int chip_id = -1;
     uint32_t value = 0;
     bool do_imux = false;
     int c = 0;
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
                 connectivity_config_filename = optarg;
                 break;
             case 'i' :
-                chip_id = static_cast<uint32_t>(std::stoi(optarg));
+                chip_id = std::stoi(optarg);
                 break;
             case 'v' :
                 value = static_cast<uint32_t>(std::stoi(optarg));
@@ -81,18 +81,39 @@ int main(int argc, char* argv[]) {
         auto cfg = dynamic_cast<Rd53bCfg*>(fe.get());
         hw->setCmdEnable(cfg->getTxChannel());
         hw->setTrigEnable(0);
-        if(i != chip_id) {
-            fe->writeNamedRegister("MonitorV", 63);
-            fe->writeNamedRegister("MonitorI", 63);
-        } else {
+        if(chip_id < 0) {
+            fe->writeNamedRegister("MonitorEnable", 1);
+            // do all chips
             if(do_imux) {
                 fe->writeNamedRegister("MonitorV", 1);
                 fe->writeNamedRegister("MonitorI", value);
             } else {
                 fe->writeNamedRegister("MonitorV", value);
-                fe->writeNamedRegister("MonitorI", 63);
             }
+        } else if (i == chip_id) {
+            fe->writeNamedRegister("MonitorEnable", 1);
+            if(do_imux) {
+                fe->writeNamedRegister("MonitorV", 1);
+                fe->writeNamedRegister("MonitorI", value);
+            } else {
+                fe->writeNamedRegister("MonitorV", value);
+            }
+            
         }
+        //if(i != chip_id) {
+        //    fe->writeNamedRegister("MonitorV", 63);
+        //    fe->writeNamedRegister("MonitorI", 63);
+        //    fe->writeNamedRegister("MonitorEnable", 0);
+        //} else {
+        //    fe->writeNamedRegister("MonitorEnable", 1);
+        //    if(do_imux) {
+        //        fe->writeNamedRegister("MonitorV", 1);
+        //        fe->writeNamedRegister("MonitorI", value);
+        //    } else {
+        //        fe->writeNamedRegister("MonitorV", value);
+        //        fe->writeNamedRegister("MonitorI", 63);
+        //    }
+        //}
     }
     return 0;
 }

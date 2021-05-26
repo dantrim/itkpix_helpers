@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
     std::string chip_config_filename = "";
     std::string hw_config_filename = "";
     std::string register_name = "";
-    uint32_t chip_number = 0;
+    int chip_id = -1;
     uint32_t register_value = 0;
     int c = 0;
     while ((c = getopt_long(argc, argv, "r:c:i:n:v:", longopts_t, NULL)) != -1) {
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
                 chip_config_filename = optarg;
                 break;
             case 'i' :
-                chip_number = static_cast<uint32_t>(std::stoi(optarg));
+                chip_id = std::stoi(optarg);
                 break;
             case 'n' :
                 register_name = optarg;
@@ -66,22 +66,27 @@ int main(int argc, char* argv[]) {
 
     namespace pix = itkpix::helpers;
     auto hw = pix::spec_init(hw_config_filename);
-    auto fe = pix::rd53b_init(hw, chip_config_filename, chip_number);
-    auto cfg = dynamic_cast<Rd53bCfg*>(fe.get());
 
     if(!hw) {
         std::cout << "ERROR: Initialized hw controller is nullptr" << std::endl;
         return 1;
     }
 
-    if(!fe) {
-        std::cout << "ERROR: Initialized fe chip is nullptr" << std::endl;
-        return 1;
-    }
-
-    hw->setCmdEnable(cfg->getTxChannel());
     hw->setTrigEnable(0);
-    fe->writeNamedRegister(register_name, register_value);
+    for(size_t i = 0; i < 4; i++) {
+        auto fe = pix::rd53b_init(hw, chip_config_filename, i);
+        if(!fe) {
+            std::cout << "ERROR: Initialized fe chip " << i << " is nullptr" << std::endl;
+            return 1;
+        }
+        auto cfg = dynamic_cast<Rd53bCfg*>(fe.get());
+        hw->setCmdEnable(cfg->getTxChannel());
+        if(chip_id < 0) {
+            fe->writeNamedRegister(register_name, register_value);
+        } else if(i == chip_id) {
+            fe->writeNamedRegister(register_name, register_value);
+        }
+    }
 
     return 0;
 }
