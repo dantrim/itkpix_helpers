@@ -27,6 +27,10 @@ bool spec_trigger_loop(std::unique_ptr<SpecController>& hw);
 
 std::unique_ptr<Rd53b> rd53b_init(std::unique_ptr<SpecController>& hw,
                                   std::string config, int chip_num = 0);
+
+uint32_t read_efuses(std::unique_ptr<Rd53b>& fe, std::unique_ptr<SpecController>& hw);
+std::pair<uint32_t, uint32_t> decode_register(uint32_t higher, uint32_t lower);
+uint32_t read_register(std::unique_ptr<Rd53b>& fe, std::unique_ptr<SpecController>& hw, uint32_t register_address);
 void rd53b_configure(std::unique_ptr<SpecController>& hw, std::unique_ptr<Rd53b>& fe);
 void configure_init(std::unique_ptr<SpecController>& hw, std::unique_ptr<Rd53b>& fe);
 void configure_global(std::unique_ptr<SpecController>& hw, std::unique_ptr<Rd53b>& fe);

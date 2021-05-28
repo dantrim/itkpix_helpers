@@ -117,6 +117,94 @@ bool itkpix::helpers::spec_init_trigger(std::unique_ptr<SpecController>& hw,
     return true;
 }
 
+std::pair<uint32_t, uint32_t> itkpix::helpers::decode_register(uint32_t higher,
+                                                              uint32_t lower) {
+    if ((higher & 0x55000000) == 0x55000000) {
+        return std::make_pair((lower >> 16) & 0x3FF, lower & 0xFFFF);
+    } else if ((higher & 0x99000000) == 0x99000000) {
+        return std::make_pair((higher >> 10) & 0x3FF,
+                              ((lower >> 26) & 0x3F) + ((higher & 0x3FF) << 6));
+    } else {
+        throw std::runtime_error(
+            "itkpix::helpers::decode_register Failed to decode register data");
+    }
+}
+
+uint32_t itkpix::helpers::read_register(std::unique_ptr<Rd53b>& fe,
+                std::unique_ptr<SpecController>& hw, uint32_t register_address) {
+
+    fe->sendRdReg(fe->getChipId(), register_address);
+    while(!hw->isCmdEmpty()){}
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    RawData* data = hw->readData();
+    if(data != NULL) {
+        if(!data->words >= 2) {
+            std::stringstream e;
+            e << "itkpix::helpers::read_register Received wrong number of words (" << data->words << ") for FE with chipId = " << fe->getChipId();
+            throw e.str();
+        }
+        std::pair<uint32_t, uint32_t> answer;
+        try {
+            answer = itkpix::helpers::decode_register(data->buf[0], data->buf[1]);
+        } catch(std::exception& e) {
+            std::stringstream err;
+            err << "itkpix::helpers::read_register Failed to decode register "
+                   "readback at register address "
+                << register_address;
+            throw std::runtime_error(err.str());
+        }  // catch
+
+        if (answer.first != register_address) {
+            std::stringstream err;
+            err << "itkpix::helpers::read_register Returned data is for "
+                   "readback of unexpected register (expect: "
+                << register_address << ", received: " << answer.first << ")";
+            throw std::runtime_error(err.str());
+        }
+        return answer.second;
+    }  // non-null
+    throw std::runtime_error(
+        "itkpix::helpers::read_register Returned data was null");
+            
+}
+
+uint32_t itkpix::helpers::read_efuses(std::unique_ptr<Rd53b>& fe, std::unique_ptr<SpecController>& hw) {
+
+    //
+    // put E-fuse programmer circuit in READ mode
+    //
+    fe->writeRegister(&Rd53b::EfuseConfig, 0x0f0f);
+    while(!hw->isCmdEmpty()) {}
+
+    //
+    // send e-fuse circuit the reset signal to  halt any other state / reset FSM
+    //
+    fe->writeRegister(&Rd53b::GlobalPulseConf, 0x100);
+    fe->writeRegister(&Rd53b::GlobalPulseWidth, 200);
+    while(!hw->isCmdEmpty()) {}
+    fe->sendGlobalPulse(fe->getChipId());
+    while(!hw->isCmdEmpty()) {}
+
+    //
+    // now read back
+    //
+    uint32_t efuse_register_read_0 = 136;
+    uint32_t efuse_register_read_1 = 135;
+
+    uint32_t efuse_0 = 0;
+    uint32_t efuse_1 = 0;
+    try {
+        efuse_0 = itkpix::helpers::read_register(fe, hw, efuse_register_read_0);
+        efuse_1 = itkpix::helpers::read_register(fe, hw, efuse_register_read_1);
+    } catch(std::exception& e) {
+        std::stringstream err;
+        err << "itkpix::helpers::read_efuses Failed to readback E-fuse data: " << e.what();
+        throw std::runtime_error(err.str());
+    }
+    uint32_t efuse = ((efuse_1 & 0xffff) << 16) | (efuse_0 & 0xffff);
+    return efuse;
+}
+
 bool itkpix::helpers::spec_trigger_loop(std::unique_ptr<SpecController>& hw) {
     while (!hw->isCmdEmpty()) {
     }
