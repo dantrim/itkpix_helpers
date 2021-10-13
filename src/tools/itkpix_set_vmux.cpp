@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
     }
 
     for(size_t i = 0; i < 4; i++) {
+        if(chip_id >= 0 && i != chip_id) continue;
         auto fe = pix::rd53b_init(hw, connectivity_config_filename, i);
         if(!fe) {
             std::cout << "ERROR: Initialized fe chip " << i << " is nullptr" << std::endl;
