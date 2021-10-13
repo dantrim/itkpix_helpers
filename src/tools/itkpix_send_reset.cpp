@@ -74,7 +74,6 @@ int main(int argc, char* argv[]) {
     // send hard reset via clock idling
     //
 
-    std::cout << "Sending idles" << std::endl;
     // send idles
     for(unsigned int i = 0; i < 400; i++) {
         hw->writeFifo(0xffffffff);
@@ -88,7 +87,6 @@ int main(int argc, char* argv[]) {
     while(!hw->isCmdEmpty());
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-    std::cout << "Sending syncs" << std::endl;
     // SYNC header
     for(unsigned int i = 0; i < 32; i++) {
         hw->writeFifo(0x817E817E);
